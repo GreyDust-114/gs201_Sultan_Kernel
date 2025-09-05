@@ -41,6 +41,26 @@ jobs:
           sudo apt update
           sudo apt install -y gcc-aarch64-linux-gnu
 
+      - name: Setup Build Environment
+        run: |
+          # Clone Google Clang toolchain
+          git clone https://github.com/WildKernels/toolchain.git --depth=1 Clang
+          
+          # Set up PATH and other environment variables
+          echo "Setting up environment variables for Clang..."
+          echo "CLANG_DIR=$(pwd)/Clang" >> $GITHUB_ENV
+          echo "PATH=$(pwd)/Clang/bin:$PATH" >> $GITHUB_ENV
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          echo "CROSS_COMPILE_ARM64=aarch64-linux-gnu-" >> $GITHUB_ENV
+          
+          # This is the path to the AArch64 compiler, usually `aarch64-linux-gnu-`
+          # This triple is required by many build systems
+          echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          
+          # Verify clang version
+          clang --version
+
       - name: Set CONFIG Environment Variable
         run: |
           CONFIG="${{ inputs.repo }}"
@@ -191,8 +211,9 @@ jobs:
           if [ "${{ inputs.codename }}" == "zumapro" ]; then
             export KCFLAGS="-march=armv8.6-a -O3 --param=min-pagesize=0"
           fi
-          make ${{ inputs.codename }}_defconfig -j$(nproc --all)
-          make -j$(nproc --all)
+          # Using the variables set in the 'Setup Build Environment' step
+          make ${{ inputs.codename }}_defconfig
+          make -j$(nproc --all) CC=clang CROSS_COMPILE=aarch64-linux-gnu-
 
       - name: Copy Images
         run: |
