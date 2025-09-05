@@ -1,10 +1,10 @@
 name: Sultan
 permissions:
-  contents: write  # Allow writing to repository contents (for pushing tags)
-  actions: write   # Allows triggering actions
+  contents: write  # 允许写入存储库内容（用于推送标签）(Allow writing to repository contents (for pushing tags))
+  actions: write   # 允许触发工作流(Allows triggering actions)
 
 on:
-  workflow_call: # This allows this workflow to be called from another workflow
+  workflow_call: # 这允许从另一个工作流调用此工作流(This allows this workflow to be called from another workflow)
     inputs:
       codename:
         required: true
@@ -23,7 +23,7 @@ jobs:
   build-kernel-sultan-kernelsu-susfs:
     runs-on: ubuntu-latest
     steps:
-      - name: Maximize Build Space
+      - name: 最大化构建空间(Maximize Build Space)
         uses: AdityaGarg8/remove-unwanted-software@v5
         with:
           remove-dotnet: 'true'          # Frees ~2 GB
@@ -36,12 +36,12 @@ jobs:
           remove-cached-tools: 'false'   # Avoid unless confirmed safe
           verbose: 'true'                # Enable detailed logging
           
-      - name: Installing dependencies
+      - name: 安装依赖(Installing dependencies)
         run: |
           sudo apt update
           sudo apt install -y gcc-aarch64-linux-gnu
 
-      - name: Setup Build Environment
+      - name: 设置构建环境(Setup Build Environment)
         run: |
           # Clone Google Clang toolchain
           git clone https://github.com/WildKernels/toolchain.git --depth=1 Clang
@@ -61,7 +61,7 @@ jobs:
           # Verify clang version
           clang --version
 
-      - name: Set CONFIG Environment Variable
+      - name: 设置环境变量(Set CONFIG Environment Variable)
         run: |
           CONFIG="${{ inputs.repo }}"
           
@@ -70,7 +70,7 @@ jobs:
           
           echo "CONFIG set to: $CONFIG"
 
-      - name: Clone AnyKernel3 and Other Dependencies
+      - name: 复制AnyKernel3和其它依赖(Clone AnyKernel3 and Other Dependencies)
         run: |
           echo "Cloning AnyKernel3 and other dependencies..."
           
@@ -85,9 +85,10 @@ jobs:
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           git clone https://github.com/TheWildJames/kernel_patches.git
-          git clone https://github.com/kerneltoast/${{ inputs.repo }}
+          # git clone https://github.com/kerneltoast/${{ inputs.repo }}
+          git clone https://github.com/momojuro/android_kernel_google_gs201 # 更换内核源码
       
-      - name: Add KernelSU
+      - name: 添加KernelSu(Add KernelSU)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -95,7 +96,7 @@ jobs:
           echo "Adding KernelSU..."
           curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s wild
 
-      - name: Apply SUSFS Patches
+      - name: 添加SUSFS补丁(Apply SUSFS Patches)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -132,7 +133,7 @@ jobs:
           cp ../kernel_patches/sultan/sys.c_fix.patch ./
           patch -p1 --fuzz=3 < sys.c_fix.patch
 
-      - name: Apply KSU Hooks
+      - name: 添加KSU Hooks(Apply KSU Hooks)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -140,7 +141,7 @@ jobs:
           cp ../kernel_patches/wild/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch
           
-      - name: Apply Hide Stuff Patches
+      - name: 添加隐藏补丁(Apply Hide Stuff Patches)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -148,7 +149,7 @@ jobs:
           cp ../kernel_patches/69_hide_stuff.patch ./
           patch -p1 -F 3 < 69_hide_stuff.patch
 
-      - name: Add SUSFS Configuration Settings
+      - name: 添加SUSFS初始设置(Add SUSFS Configuration Settings)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -194,7 +195,7 @@ jobs:
           echo "CONFIG_TCP_CONG_WESTWOOD=n" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           echo "CONFIG_TCP_CONG_HTCP=n" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
-      - name: Run sed and perl Commands
+      - name: 运行 sed 和 perl 命令(Run sed and perl Commands)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
@@ -202,46 +203,37 @@ jobs:
           echo "Running sed commands..."
           sed -i 's/CONFIG_LOCALVERSION="-Sultan"/CONFIG_LOCALVERSION="-Wild"/' ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
-      - name: Build the Kernel
+      - name: 构建内核(Build the Kernel)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
           
           echo "Building the kernel..."
-          if [ "${{ inputs.codename }}" == "zumapro" ]; then
-            export KCFLAGS="-march=armv8.6-a -O3 --param=min-pagesize=0"
-          fi
           # Using the variables set in the 'Setup Build Environment' step
           make ${{ inputs.codename }}_defconfig
           make -j$(nproc --all) CC=clang CROSS_COMPILE=aarch64-linux-gnu-
 
-      - name: Copy Images
+      - name: 复制镜像(Copy Images)
         run: |
           echo "Changing to configuration directory: $CONFIG..."
           cd "$CONFIG"
 
           echo "Copying Image.lz4 and concatenating DTB files..."
           cp ./out/arch/arm64/boot/Image.lz4 ../AnyKernel3/Image.lz4
-          if [ "${{ inputs.codename }}" == "gs201" ]; then
-            cat ./out/google-devices/gs201/dts/*.dtb > ../AnyKernel3/dtb
-            #cp ./out/google-devices/gs201/dts/dtbo.img ../AnyKernel3/dtbo.img
-          elif [ "${{ inputs.codename }}" == "zuma" ]; then
-            cat ./out/google-devices/zuma/dts/*.dtb > ../AnyKernel3/dtb
-          elif [ "${{ inputs.codename }}" == "zumapro" ]; then
-            cat ./out/google-devices/zumapro/dts/*.dtb > ../AnyKernel3/dtb
-          fi
+          cat ./out/google-devices/gs201/dts/*.dtb > ../AnyKernel3/dtb
+          #cp ./out/google-devices/gs201/dts/dtbo.img ../AnyKernel3/dtbo.img
 
-      - name: Create ZIP Files for Different Formats
+      - name: 创建ZIP文件(Create ZIP Files for Different Formats)
         run: |
           echo "Navigating to AnyKernel3 directory..."
           cd ./AnyKernel3
 
           # Zip the files in the AnyKernel3 directory with a new naming convention
-          ZIP_NAME="${{ inputs.codename }}_A16_Sultan_WKSU_SUSFS.zip"
+          ZIP_NAME="${{ inputs.codename }}_A16_Sultan_KSUN_SUSFS.zip"
           echo "Creating zip file $ZIP_NAME..."
           zip -r "../$ZIP_NAME" ./*
           
-      - name: Upload Build Artifacts
+      - name: 上传构建完成的文件(Upload Build Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: kernel-${{ inputs.codename }}
