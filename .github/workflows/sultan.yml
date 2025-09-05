@@ -203,10 +203,15 @@ jobs:
         run: |
           echo "移动到配置目录: $CONFIG..."
           cd "$CONFIG"
-          
-          echo "构建内核..."
-          make O=out ${{ inputs.codename }}_defconfig
 
+          echo "准备内核..."
+          make O=out ${{ inputs.codename }}_defconfig
+          make O=out prepare \
+            CC=$CLANG_PATH/clang \
+            LD=$CLANG_PATH/ld.lld \
+            CROSS_COMPILE=aarch64-linux-gnu-
+
+          echo "并行构建内核..."
           make O=out -j$(nproc --all) \
             CC=$CLANG_PATH/clang \
             LD=$CLANG_PATH/ld.lld \
