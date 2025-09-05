@@ -39,23 +39,7 @@ jobs:
       - name: 安装依赖(Installing dependencies)
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
-
-      - name: 设置构建环境(Setup Build Environment)
-        run: |
-          echo "克隆官方 Google Clang 工具链..."
-          git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1 Clang
-
-          # 设置 PATH 和其他环境变量
-          echo "查找 Clang 路径..."
-          CLANG_PATH=$(find "$(pwd)/Clang" -name "bin" -type d | head -n 1)
-
-          echo "CLANG_PATH=$CLANG_PATH" >> $GITHUB_ENV
-          echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
-
-          # 验证 clang 版本
-          "$CLANG_PATH"/clang --version
+          sudo apt install -y gcc-aarch64-linux-gnu
 
       - name: 设置环境变量(Set CONFIG Environment Variable)
         run: |
@@ -203,27 +187,10 @@ jobs:
         run: |
           echo "移动到配置目录: $CONFIG..."
           cd "$CONFIG"
-
-          echo "检查磁盘空间:"
-          df -h
-
-          echo "准备内核..."
-          make O=out ${{ inputs.codename }}_defconfig
-          make SHELL=/bin/bash O=out prepare \
-            CC=$CLANG_PATH/clang \
-            LD=$CLANG_PATH/ld.lld \
-            CROSS_COMPILE=aarch64-linux-gnu-
-
-          echo "并行构建内核..."
-          make SHELL=/bin/bash O=out -j$(nproc --all) \
-            CC=$CLANG_PATH/clang \
-            LD=$CLANG_PATH/ld.lld \
-            AR=$CLANG_PATH/llvm-ar \
-            NM=$CLANG_PATH/llvm-nm \
-            OBJCOPY=$CLANG_PATH/llvm-objcopy \
-            OBJDUMP=$CLANG_PATH/llvm-objdump \
-            STRIP=$CLANG_PATH/llvm-strip \
-            CROSS_COMPILE=aarch64-linux-gnu-
+          
+          echo "构建内核..."
+          make ${{ inputs.codename }}_defconfig -j$(nproc --all)
+          make -j$(nproc --all)
             
       - name: 复制镜像(Copy Images)
         run: |
