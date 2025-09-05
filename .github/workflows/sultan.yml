@@ -204,15 +204,18 @@ jobs:
           echo "移动到配置目录: $CONFIG..."
           cd "$CONFIG"
 
+          echo "检查磁盘空间:"
+          df -h
+
           echo "准备内核..."
           make O=out ${{ inputs.codename }}_defconfig
-          make O=out prepare \
+          make SHELL=/bin/bash O=out prepare \
             CC=$CLANG_PATH/clang \
             LD=$CLANG_PATH/ld.lld \
             CROSS_COMPILE=aarch64-linux-gnu-
 
           echo "并行构建内核..."
-          make O=out -j$(nproc --all) \
+          make SHELL=/bin/bash O=out -j$(nproc --all) \
             CC=$CLANG_PATH/clang \
             LD=$CLANG_PATH/ld.lld \
             AR=$CLANG_PATH/llvm-ar \
