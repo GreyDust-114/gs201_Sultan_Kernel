@@ -39,7 +39,8 @@ jobs:
       - name: 安装依赖(Installing dependencies)
         run: |
           sudo apt update
-          sudo apt install -y gcc-aarch64-linux-gnu
+          sudo apt install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
 
       - name: 设置构建环境(Setup Build Environment)
         run: |
@@ -204,19 +205,18 @@ jobs:
           cd "$CONFIG"
           
           echo "构建内核..."
-          # 使用在“设置构建环境”步骤中设置的变量
-          echo "构建内核..."
-          make ${{ inputs.codename }}_defconfig
-          make -j$(nproc --all) \
-            CC=$CLANG_PATH/clang \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip
+          make O=out ${{ inputs.codename }}_defconfig
 
+          make O=out -j$(nproc --all) \
+            CC=$CLANG_PATH/clang \
+            LD=$CLANG_PATH/ld.lld \
+            AR=$CLANG_PATH/llvm-ar \
+            NM=$CLANG_PATH/llvm-nm \
+            OBJCOPY=$CLANG_PATH/llvm-objcopy \
+            OBJDUMP=$CLANG_PATH/llvm-objdump \
+            STRIP=$CLANG_PATH/llvm-strip \
+            CROSS_COMPILE=aarch64-linux-gnu-
+            
       - name: 复制镜像(Copy Images)
         run: |
           echo "移动到配置目录: $CONFIG..."
