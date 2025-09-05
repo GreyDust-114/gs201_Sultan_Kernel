@@ -43,16 +43,16 @@ jobs:
 
       - name: 设置构建环境(Setup Build Environment)
         run: |
-          # 克隆官方 Google Clang 工具链
           echo "克隆官方 Google Clang 工具链..."
           git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 --depth=1 Clang
-          
+
           # 设置 PATH 和其他环境变量
-          echo "为 Clang 设置环境变量..."
+          echo "查找 Clang 路径..."
           CLANG_PATH=$(find "$(pwd)/Clang" -name "bin" -type d | head -n 1)
+
+          echo "CLANG_PATH=$CLANG_PATH" >> $GITHUB_ENV
           echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
-          echo "PATH=$CLANG_PATH:$PATH" >> $GITHUB_ENV
-          
+
           # 验证 clang 版本
           "$CLANG_PATH"/clang --version
 
@@ -205,8 +205,17 @@ jobs:
           
           echo "构建内核..."
           # 使用在“设置构建环境”步骤中设置的变量
+          echo "构建内核..."
           make ${{ inputs.codename }}_defconfig
-          make -j$(nproc --all) CC=clang CROSS_COMPILE=aarch64-linux-gnu-
+          make -j$(nproc --all) \
+            CC=$CLANG_PATH/clang \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip
 
       - name: 复制镜像(Copy Images)
         run: |
